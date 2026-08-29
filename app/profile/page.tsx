@@ -14,6 +14,8 @@ export default function ProfilePage() {
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -24,7 +26,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
@@ -35,6 +37,7 @@ export default function ProfilePage() {
         setIndustry(data.industry || "");
         setLocation(data.location || "");
         setDescription(data.description || "");
+        setLogoUrl(data.logo_url || "");
       }
 
       setLoading(false);
@@ -42,6 +45,14 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [router]);
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+      setLogoUrl(URL.createObjectURL(file));
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +62,29 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    let finalLogoUrl = logoUrl;
+
+    if (logoFile) {
+      const fileExt = logoFile.name.split(".").pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("business-logos")
+        .upload(filePath, logoFile);
+
+      if (uploadError) {
+        setMessage(`Logo upload failed: ${uploadError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("business-logos")
+        .getPublicUrl(filePath);
+
+      finalLogoUrl = urlData.publicUrl;
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -58,6 +92,7 @@ export default function ProfilePage() {
         industry,
         location,
         description,
+        logo_url: finalLogoUrl,
       })
       .eq("id", user.id);
 
@@ -65,6 +100,7 @@ export default function ProfilePage() {
       setMessage(error.message);
     } else {
       setMessage("Profile saved!");
+      setLogoFile(null);
     }
 
     setSaving(false);
@@ -88,6 +124,20 @@ export default function ProfilePage() {
         <p className="text-sm text-gray-500 mt-1">
           This is what other businesses will see on Wholzo.
         </p>
+
+        <div className="mt-5 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Business logo" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[10px] text-gray-400">No logo</span>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1">Business logo</label>
+            <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs" />
+          </div>
+        </div>
 
         <div className="mt-5">
           <label className="text-xs font-semibold text-gray-700">Business name</label>

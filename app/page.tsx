@@ -232,6 +232,9 @@ export default function Home() {
 
             {userEmail ? (
               <>
+                <a href="/products/new" className="px-4 py-2 rounded-md text-xs font-semibold border border-gray-300 hover:bg-gray-50">
+                  List Product
+                </a>
                 <a href="/profile" className="px-4 py-2 rounded-md text-xs font-semibold border border-gray-300 hover:bg-gray-50">
                   My Profile
                 </a>
