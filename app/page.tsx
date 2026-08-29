@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   Search,
@@ -77,6 +77,12 @@ const categories = [
   { name: "Machinery", icon: Cog },
 ];
 
+function priceNumber(price: string): number | null {
+  const match = price.match(/[\d,]+/);
+  if (!match) return null;
+  return parseInt(match[0].replace(/,/g, ""), 10);
+}
+
 export default function Home() {
   const [page, setPage] = useState<Page>("home");
   const [query, setQuery] = useState("");
@@ -90,6 +96,11 @@ export default function Home() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [stateFilter, setStateFilter] = useState("All States");
+  const [moqFilter, setMoqFilter] = useState("MOQ");
+  const [priceSort, setPriceSort] = useState("Price");
 
   useEffect(() => {
     async function loadProducts() {
@@ -140,6 +151,42 @@ export default function Home() {
     loadBusinesses();
     loadUser();
   }, []);
+
+  const availableCategories = useMemo(
+    () => ["All Categories", ...Array.from(new Set(products.map((p) => p.category)))],
+    [products]
+  );
+  const availableStates = useMemo(
+    () => ["All States", ...Array.from(new Set(products.map((p) => p.state)))],
+    [products]
+  );
+  const moqOptions = ["MOQ", "Under 100", "100 to 500", "500+"];
+  const priceOptions = ["Price", "Low to High", "High to Low"];
+
+  const filteredProducts = useMemo(() => {
+    let list = products.filter((p) => {
+      const matchesQuery =
+        query.trim() === "" ||
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.category.toLowerCase().includes(query.toLowerCase());
+      const matchesCategory = categoryFilter === "All Categories" || p.category === categoryFilter;
+      const matchesState = stateFilter === "All States" || p.state === stateFilter;
+      const matchesMoq =
+        moqFilter === "MOQ" ||
+        (moqFilter === "Under 100" && p.moq < 100) ||
+        (moqFilter === "100 to 500" && p.moq >= 100 && p.moq <= 500) ||
+        (moqFilter === "500+" && p.moq > 500);
+      return matchesQuery && matchesCategory && matchesState && matchesMoq;
+    });
+
+    if (priceSort === "Low to High") {
+      list = [...list].sort((a, b) => (priceNumber(a.price) ?? Infinity) - (priceNumber(b.price) ?? Infinity));
+    } else if (priceSort === "High to Low") {
+      list = [...list].sort((a, b) => (priceNumber(b.price) ?? -Infinity) - (priceNumber(a.price) ?? -Infinity));
+    }
+
+    return list;
+  }, [products, query, categoryFilter, stateFilter, moqFilter, priceSort]);
 
   function go(p: Page) {
     setPage(p);
@@ -295,17 +342,25 @@ export default function Home() {
           <section className="bg-[#F8F8FA] py-14">
             <div className="max-w-[1320px] mx-auto px-5 lg:px-8">
               <SectionTitle title="Trending Wholesale Products" subtitle="Products listed by businesses on Wholzo" action="View all products" onClick={() => go("search")} />
-              <div className="flex flex-wrap gap-2 mt-6">
-                <FilterButton text="All Categories" />
-                <FilterButton text="All States" />
-                <FilterButton text="MOQ" />
-                <FilterButton text="Price" />
-              </div>
+              <FilterBar
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                stateFilter={stateFilter}
+                setStateFilter={setStateFilter}
+                moqFilter={moqFilter}
+                setMoqFilter={setMoqFilter}
+                priceSort={priceSort}
+                setPriceSort={setPriceSort}
+                availableCategories={availableCategories}
+                availableStates={availableStates}
+                moqOptions={moqOptions}
+                priceOptions={priceOptions}
+              />
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
-                {products.length === 0 && (
-                  <p className="text-xs text-gray-400 col-span-full">No products listed yet.</p>
+                {filteredProducts.length === 0 && (
+                  <p className="text-xs text-gray-400 col-span-full">No products match these filters.</p>
                 )}
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.name + product.businessId}
                     product={product}
@@ -383,12 +438,6 @@ export default function Home() {
       {page === "discover" && (
         <main className="max-w-[1200px] mx-auto px-5 py-14">
           <PageHeading title="Discover Wholesalers" subtitle="Find businesses, suppliers and wholesale connections." />
-          <div className="flex flex-wrap gap-2 mt-8">
-            <FilterButton text="State" />
-            <FilterButton text="Industry" />
-            <FilterButton text="Verified" />
-            <FilterButton text="Years in Business" />
-          </div>
           <div className="grid md:grid-cols-3 gap-5 mt-7">
             {businesses.length === 0 && (
               <p className="text-xs text-gray-400 col-span-full">No businesses yet.</p>
@@ -408,23 +457,32 @@ export default function Home() {
       {page === "search" && (
         <main className="max-w-[1200px] mx-auto px-5 py-14">
           <PageHeading title="Search Wholesale" subtitle="Showing search results" />
-          <div className="flex flex-wrap gap-2 mt-7">
-            <FilterButton text="Category" />
-            <FilterButton text="State" />
-            <FilterButton text="Price" />
-            <FilterButton text="MOQ" />
-          </div>
+          <FilterBar
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            stateFilter={stateFilter}
+            setStateFilter={setStateFilter}
+            moqFilter={moqFilter}
+            setMoqFilter={setMoqFilter}
+            priceSort={priceSort}
+            setPriceSort={setPriceSort}
+            availableCategories={availableCategories}
+            availableStates={availableStates}
+            moqOptions={moqOptions}
+            priceOptions={priceOptions}
+          />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-7">
-            {products
-              .filter((p) => query.trim() === "" || p.name.toLowerCase().includes(query.toLowerCase()) || p.category.toLowerCase().includes(query.toLowerCase()))
-              .map((product) => (
-                <ProductCard
-                  key={product.name + product.businessId}
-                  product={product}
-                  onDetails={() => setSelectedProduct(product)}
-                  onChat={() => openChat({ id: product.businessId, name: product.business })}
-                />
-              ))}
+            {filteredProducts.length === 0 && (
+              <p className="text-xs text-gray-400 col-span-full">No products match these filters.</p>
+            )}
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.name + product.businessId}
+                product={product}
+                onDetails={() => setSelectedProduct(product)}
+                onChat={() => openChat({ id: product.businessId, name: product.business })}
+              />
+            ))}
           </div>
         </main>
       )}
@@ -495,12 +553,98 @@ function BusinessNode({ className, icon, text }: { className: string; icon: Reac
   );
 }
 
-function FilterButton({ text }: { text: string }) {
+function FilterDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <button className="flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-[#E1E1E7] text-[10px] font-semibold hover:border-[#C8C5F0]">
-      {text}
-      <ChevronDown size={12} />
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-[#E1E1E7] text-[10px] font-semibold hover:border-[#C8C5F0]"
+      >
+        {value}
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#E5E5EA] rounded-md shadow-lg py-1 min-w-[160px] max-h-[220px] overflow-y-auto">
+            {options.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-[11px] hover:bg-gray-50"
+                style={{ color: opt === value ? PURPLE : BLACK, fontWeight: opt === value ? 700 : 400 }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FilterBar({
+  categoryFilter,
+  setCategoryFilter,
+  stateFilter,
+  setStateFilter,
+  moqFilter,
+  setMoqFilter,
+  priceSort,
+  setPriceSort,
+  availableCategories,
+  availableStates,
+  moqOptions,
+  priceOptions,
+}: {
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
+  stateFilter: string;
+  setStateFilter: (v: string) => void;
+  moqFilter: string;
+  setMoqFilter: (v: string) => void;
+  priceSort: string;
+  setPriceSort: (v: string) => void;
+  availableCategories: string[];
+  availableStates: string[];
+  moqOptions: string[];
+  priceOptions: string[];
+}) {
+  const hasActiveFilter =
+    categoryFilter !== "All Categories" || stateFilter !== "All States" || moqFilter !== "MOQ" || priceSort !== "Price";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 mt-6">
+      <FilterDropdown value={categoryFilter} options={availableCategories} onChange={setCategoryFilter} />
+      <FilterDropdown value={stateFilter} options={availableStates} onChange={setStateFilter} />
+      <FilterDropdown value={moqFilter} options={moqOptions} onChange={setMoqFilter} />
+      <FilterDropdown value={priceSort} options={priceOptions} onChange={setPriceSort} />
+      {hasActiveFilter && (
+        <button
+          onClick={() => {
+            setCategoryFilter("All Categories");
+            setStateFilter("All States");
+            setMoqFilter("MOQ");
+            setPriceSort("Price");
+          }}
+          className="text-[10px] font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-1"
+        >
+          <X size={12} />
+          Clear filters
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -654,7 +798,7 @@ function MessagesPage({
   async function handleSend() {
     if (!message.trim() || !currentUserId || !target) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("messages")
       .insert({
         sender_id: currentUserId,
