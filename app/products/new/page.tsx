@@ -11,8 +11,15 @@ export default function NewProductPage() {
   const [priceRange, setPriceRange] = useState("");
   const [moq, setMoq] = useState("");
   const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files).slice(0, 5));
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,6 +33,29 @@ export default function NewProductPage() {
       return;
     }
 
+    const imageUrls: string[] = [];
+
+    for (const file of files) {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        setMessage(`Image upload failed: ${uploadError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(filePath);
+
+      imageUrls.push(urlData.publicUrl);
+    }
+
     const { error } = await supabase.from("products").insert({
       business_id: user.id,
       name,
@@ -33,6 +63,7 @@ export default function NewProductPage() {
       price_range: priceRange,
       moq: moq ? parseInt(moq) : null,
       description,
+      image_urls: imageUrls,
     });
 
     if (error) {
@@ -81,7 +112,7 @@ export default function NewProductPage() {
           <input
             value={priceRange}
             onChange={(e) => setPriceRange(e.target.value)}
-            placeholder="e.g. ₹250 - ₹350 / unit"
+            placeholder="e.g. 250 to 350 rupees per unit"
             className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm outline-none"
           />
         </div>
@@ -106,6 +137,20 @@ export default function NewProductPage() {
             placeholder="Describe the product..."
             className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm outline-none resize-none"
           />
+        </div>
+
+        <div className="mt-4">
+          <label className="text-xs font-semibold text-gray-700">Product photos (up to 5)</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            className="w-full mt-1 text-xs"
+          />
+          {files.length > 0 && (
+            <p className="text-[11px] text-gray-500 mt-1">{files.length} photo(s) selected</p>
+          )}
         </div>
 
         <button

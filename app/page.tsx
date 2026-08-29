@@ -60,6 +60,7 @@ type Business = {
   name: string;
   state: string;
   industry: string;
+  verified: boolean;
 };
 
 type ChatTarget = {
@@ -116,7 +117,7 @@ export default function Home() {
           moq: p.moq || 0,
           state: p.profiles?.location || "India",
           category: p.category || "General",
-          image: FALLBACK_IMAGE,
+          image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : FALLBACK_IMAGE,
           business: p.profiles?.business_name || "Wholzo Business",
           businessId: p.business_id,
         }));
@@ -136,6 +137,7 @@ export default function Home() {
           name: b.business_name || "Unnamed Business",
           state: b.location || "India",
           industry: b.industry || "General",
+           verified: b.verified || false,
         }));
         setBusinesses(mapped);
       }
@@ -685,8 +687,16 @@ function BusinessCard({ business, onChat, onView }: { business: Business; onChat
           <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "#F1F0FF" }}>
             <Building2 size={20} color={PURPLE} />
           </div>
-          <div>
-            <h3 className="text-[13px] font-bold">{business.name}</h3>
+                      <div>
+            <h3 className="text-[13px] font-bold flex items-center gap-1">
+              {business.name}
+              {business.verified && (
+                <CheckCircle2 size={13} color="#059669" />
+              )}
+            </h3>
+            {business.verified && (
+              <p className="text-[9px] font-semibold text-green-600 mt-0.5">Verified Business</p>
+            )}
           </div>
         </div>
       </div>
