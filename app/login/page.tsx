@@ -30,6 +30,15 @@ export default function LoginPage() {
     router.push("/");
   }
 
+  async function handleGoogleLogin() {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <form
@@ -39,7 +48,27 @@ export default function LoginPage() {
         <h1 className="text-xl font-bold text-gray-900">Log in to Wholzo</h1>
         <p className="text-sm text-gray-500 mt-1">Welcome back.</p>
 
-        <div className="mt-5">
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full mt-5 py-2.5 rounded-md border border-gray-300 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-gray-50"
+        >
+          <svg width="16" height="16" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.5 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z" />
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.4 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.5 29.5 3 24 3 16.3 3 9.7 7.3 6.3 14.7z" />
+            <path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5l-6.5-5.5C29.5 36 26.9 37 24 37c-5.3 0-9.8-3.3-11.3-8l-6.6 5.1C9.6 40.6 16.3 45 24 45z" />
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2.1-2 3.9-3.7 5.3l6.5 5.5C40.9 37.1 44 31.5 44 24c0-1.2-.1-2.4-.4-3.5z" />
+          </svg>
+          Continue with Google
+        </button>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-[10px] text-gray-400 font-semibold">OR</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <div>
           <label className="text-xs font-semibold text-gray-700">Email</label>
           <input
             required
