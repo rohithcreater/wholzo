@@ -714,9 +714,72 @@ function BusinessCard({ business, onChat, onView }: { business: Business; onChat
     </div>
   );
 }
+type Requirement = {
+  id: string;
+  title: string;
+  quantity: string;
+  target_price: string;
+  state: string;
+  details: string;
+  status: string;
+};
 
 function RequirementPage() {
   const [posted, setPosted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const [title, setTitle] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [targetPrice, setTargetPrice] = useState("");
+  const [state, setState] = useState("");
+  const [details, setDetails] = useState("");
+
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+
+  useEffect(() => {
+    async function loadRequirements() {
+      const { data } = await supabase
+        .from("requirements")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (data) setRequirements(data);
+    }
+    loadRequirements();
+  }, [posted]);
+
+  async function handlePost(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage("");
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setMessage("Please log in to post a requirement.");
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from("requirements").insert({
+      buyer_id: user.id,
+      title,
+      quantity,
+      target_price: targetPrice,
+      state,
+      details,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setSaving(false);
+      return;
+    }
+
+    setSaving(false);
+    setPosted(true);
+  }
 
   if (posted) {
     return (
@@ -727,6 +790,13 @@ function RequirementPage() {
           </div>
           <h1 className="text-2xl font-black mt-5">Requirement Posted</h1>
           <p className="text-sm text-gray-500 mt-2">Your requirement is now visible to relevant wholesalers.</p>
+          <button
+            onClick={() => setPosted(false)}
+            className="mt-6 text-xs font-bold"
+            style={{ color: PURPLE }}
+          >
+            Post another requirement
+          </button>
         </div>
       </main>
     );
@@ -736,31 +806,95 @@ function RequirementPage() {
     <main className="max-w-[760px] mx-auto px-5 py-14">
       <PageHeading title="Post a Wholesale Requirement" subtitle="Tell suppliers exactly what you need." />
       <div className="mt-8 bg-white border border-[#E5E5EA] rounded-xl p-6">
-        <div className="grid md:grid-cols-2 gap-4">
-          <Input label="What are you looking for?" placeholder="Example: Cotton T-Shirts" />
-          <Input label="Quantity" placeholder="Example: 500" />
-          <Input label="Target price" placeholder="Example: 150 rupees per unit" />
-          <div>
-            <label className="text-[11px] font-bold">State</label>
-            <select className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none">
-              <option>Select state</option>
-              <option>Tamil Nadu</option>
-              <option>Karnataka</option>
-              <option>Kerala</option>
-              <option>Maharashtra</option>
-              <option>Gujarat</option>
-              <option>Delhi</option>
-            </select>
+        <form onSubmit={handlePost}>
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-[10px] font-bold">What are you looking for?</span>
+              <input
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Example: Cotton T-Shirts"
+                className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none focus:border-[#8D87DE]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-bold">Quantity</span>
+              <input
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="Example: 500"
+                className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none focus:border-[#8D87DE]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-bold">Target price</span>
+              <input
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                placeholder="Example: 150 rupees per unit"
+                className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none focus:border-[#8D87DE]"
+              />
+            </label>
+            <div>
+              <label className="text-[11px] font-bold">State</label>
+              <select
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none"
+              >
+                <option value="">Select state</option>
+                <option>Tamil Nadu</option>
+                <option>Karnataka</option>
+                <option>Kerala</option>
+                <option>Maharashtra</option>
+                <option>Gujarat</option>
+                <option>Delhi</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="text-[11px] font-bold">Additional details</label>
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              placeholder="Describe your requirement..."
+              className="w-full h-28 mt-2 border border-[#DCDCE4] rounded-md p-3 text-xs outline-none resize-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full mt-5 py-3 rounded-md text-white text-xs font-bold disabled:opacity-50"
+            style={{ background: PURPLE }}
+          >
+            {saving ? "Posting..." : "Post Requirement"}
+          </button>
+
+          {message && <p className="mt-3 text-[11px] text-center text-red-600">{message}</p>}
+        </form>
+      </div>
+
+      {requirements.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-black">Recent Requirements</h2>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            {requirements.map((r) => (
+              <div key={r.id} className="bg-white border border-[#E5E5EA] rounded-xl p-5">
+                <h3 className="text-sm font-bold">{r.title}</h3>
+                <div className="mt-2 text-[11px] text-gray-500 space-y-1">
+                  {r.quantity && <p>Quantity: {r.quantity}</p>}
+                  {r.target_price && <p>Target price: {r.target_price}</p>}
+                  {r.state && <p>Location: {r.state}</p>}
+                  <p>Status: <span className="text-green-600 font-semibold">{r.status}</span></p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="mt-4">
-          <label className="text-[11px] font-bold">Additional details</label>
-          <textarea placeholder="Describe your requirement..." className="w-full h-28 mt-2 border border-[#DCDCE4] rounded-md p-3 text-xs outline-none resize-none" />
-        </div>
-        <button onClick={() => setPosted(true)} className="w-full mt-5 py-3 rounded-md text-white text-xs font-bold" style={{ background: PURPLE }}>
-          Post Requirement
-        </button>
-      </div>
+      )}
     </main>
   );
 }
