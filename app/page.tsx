@@ -28,6 +28,7 @@ import {
   Package,
   Globe2,
   BriefcaseBusiness,
+  Menu,
 } from "lucide-react";
 
 const PURPLE = "#5146C7";
@@ -41,10 +42,12 @@ type Page =
   | "categories"
   | "discover"
   | "requirements"
+  | "requirement-list"
   | "messages"
   | "search";
 
 type Product = {
+  id: string;
   name: string;
   price: string;
   moq: number;
@@ -53,6 +56,8 @@ type Product = {
   image: string;
   business: string;
   businessId: string;
+  inStock: boolean;
+  views: number;
 };
 
 type Business = {
@@ -87,6 +92,7 @@ function priceNumber(price: string): number | null {
 export default function Home() {
   const [page, setPage] = useState<Page>("home");
   const [query, setQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
@@ -112,6 +118,7 @@ export default function Home() {
 
       if (data) {
         const mapped: Product[] = data.map((p: any) => ({
+          id: p.id,
           name: p.name,
           price: p.price_range || "Contact for price",
           moq: p.moq || 0,
@@ -120,6 +127,8 @@ export default function Home() {
           image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : FALLBACK_IMAGE,
           business: p.profiles?.business_name || "Wholzo Business",
           businessId: p.business_id,
+          inStock: p.in_stock !== false,
+          views: p.views || 0,
         }));
         setProducts(mapped);
       }
@@ -137,7 +146,7 @@ export default function Home() {
           name: b.business_name || "Unnamed Business",
           state: b.location || "India",
           industry: b.industry || "General",
-           verified: b.verified || false,
+          verified: b.verified || false,
         }));
         setBusinesses(mapped);
       }
@@ -192,6 +201,7 @@ export default function Home() {
 
   function go(p: Page) {
     setPage(p);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -212,19 +222,20 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[#E7E7EC]">
         <div className="max-w-[1320px] mx-auto px-5 lg:px-8 h-[68px] flex items-center justify-between">
           <button onClick={() => go("home")} className="flex items-center gap-2">
-            <img src="/logo.png" alt="Wholzo" className="h-20 w-auto object-contain" />
+            <img src="/logo.png" alt="Wholzo" className="h-10 lg:h-12 w-auto object-contain" />
           </button>
 
-          <nav className="hidden lg:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-6">
             <Nav active={page === "home"} onClick={() => go("home")}>Home</Nav>
             <Nav active={page === "categories"} onClick={() => go("categories")}>Categories</Nav>
             <Nav active={page === "discover"} onClick={() => go("discover")}>Discover</Nav>
+            <Nav active={page === "requirement-list"} onClick={() => go("requirement-list")}>Requirements</Nav>
             <Nav active={page === "requirements"} onClick={() => go("requirements")}>Post Requirement</Nav>
             <Nav active={page === "messages"} onClick={() => go("messages")}>Messages</Nav>
           </nav>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-gray-500 mr-2">
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 mr-2">
               <MapPin size={14} />
               India
               <ChevronDown size={12} />
@@ -253,6 +264,14 @@ export default function Home() {
               </>
             )}
           </div>
+
+          <button
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            className="lg:hidden p-2 -mr-2"
+            aria-label="Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
 
         <div className="max-w-[1320px] mx-auto px-5 lg:px-8 pb-3">
@@ -265,13 +284,37 @@ export default function Home() {
                 if (e.key === "Enter") go("search");
               }}
               placeholder="Search products, wholesalers, suppliers or requirements"
-              className="flex-1 bg-transparent outline-none text-xs"
+              className="flex-1 bg-transparent outline-none text-xs min-w-0"
             />
-            <button onClick={() => go("search")} className="px-4 py-1.5 rounded-md text-white text-[11px] font-bold" style={{ background: PURPLE }}>
+            <button onClick={() => go("search")} className="px-4 py-1.5 rounded-md text-white text-[11px] font-bold flex-shrink-0" style={{ background: PURPLE }}>
               Search
             </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-[#E7E7EC] px-5 py-3 flex flex-col gap-1">
+            <button onClick={() => go("home")} className="text-left py-2 text-sm font-semibold">Home</button>
+            <button onClick={() => go("categories")} className="text-left py-2 text-sm font-semibold">Categories</button>
+            <button onClick={() => go("discover")} className="text-left py-2 text-sm font-semibold">Discover</button>
+            <button onClick={() => go("requirement-list")} className="text-left py-2 text-sm font-semibold">Requirements</button>
+            <button onClick={() => go("requirements")} className="text-left py-2 text-sm font-semibold">Post Requirement</button>
+            <button onClick={() => go("messages")} className="text-left py-2 text-sm font-semibold">Messages</button>
+            <div className="border-t border-[#E7E7EC] my-2" />
+            {userEmail ? (
+              <>
+                <a href="/products/new" className="text-left py-2 text-sm font-semibold">List Product</a>
+                <a href="/profile" className="text-left py-2 text-sm font-semibold">My Profile</a>
+                <button onClick={handleLogout} className="text-left py-2 text-sm font-semibold text-red-600">Logout</button>
+              </>
+            ) : (
+              <>
+                <a href="/login" className="text-left py-2 text-sm font-semibold">Login</a>
+                <a href="/signup" className="text-left py-2 text-sm font-semibold" style={{ color: PURPLE }}>Join Free</a>
+              </>
+            )}
+          </div>
+        )}
       </header>
 
       {page === "home" && (
@@ -280,20 +323,20 @@ export default function Home() {
             <div className="absolute right-[-80px] top-[-100px] opacity-[0.035]">
               <Network size={600} strokeWidth={1} />
             </div>
-            <div className="max-w-[1320px] mx-auto px-5 lg:px-8 py-20 lg:py-24 grid lg:grid-cols-[1.05fr_.95fr] gap-14 items-center">
+            <div className="max-w-[1320px] mx-auto px-5 lg:px-8 py-14 lg:py-24 grid lg:grid-cols-[1.05fr_.95fr] gap-10 lg:gap-14 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E5E5EA] rounded-full text-[10px] font-bold text-gray-600">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: PURPLE }} />
                   INDIAS WHOLESALE BUSINESS NETWORK
                 </div>
-                <h1 className="mt-6 text-[44px] lg:text-[60px] leading-[1.02] font-black tracking-[-2.5px]">
+                <h1 className="mt-6 text-[32px] sm:text-[44px] lg:text-[60px] leading-[1.05] lg:leading-[1.02] font-black tracking-[-1.5px] lg:tracking-[-2.5px]">
                   Find Businesses.
                   <br />
                   Build Connections.
                   <br />
                   <span style={{ color: PURPLE }}>Grow Wholesale.</span>
                 </h1>
-                <p className="mt-6 text-[15px] leading-7 text-gray-500 max-w-[570px]">
+                <p className="mt-6 text-[14px] lg:text-[15px] leading-7 text-gray-500 max-w-[570px]">
                   Discover wholesalers, suppliers and business opportunities across India. Connect directly and build long-term wholesale relationships.
                 </p>
                 <div className="flex flex-wrap gap-3 mt-8">
@@ -305,28 +348,29 @@ export default function Home() {
                     Post a Requirement
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-6 mt-9 text-[10px] text-gray-500">
+                <div className="flex flex-wrap gap-4 lg:gap-6 mt-9 text-[10px] text-gray-500">
                   <div className="flex items-center gap-2"><ShieldCheck size={16} color={PURPLE} />Verified Businesses</div>
                   <div className="flex items-center gap-2"><Globe2 size={16} color={PURPLE} />Across India</div>
                   <div className="flex items-center gap-2"><MessageCircle size={16} color={PURPLE} />Direct Communication</div>
                 </div>
               </div>
 
-              <div className="relative h-[390px] flex items-center justify-center">
-                <div className="absolute w-[320px] h-[320px] rounded-full border border-dashed border-[#D8D8EA]" />
-                <div className="absolute w-[230px] h-[230px] rounded-full border border-[#E3E3F0]" />
-                <div className="relative z-10 w-24 h-24 rounded-2xl flex items-center justify-center shadow-xl" style={{ background: "linear-gradient(135deg,#4036A8,#675BD5)" }}>
-                  <Handshake size={42} color="white" strokeWidth={1.8} />
+              <div className="relative h-[280px] sm:h-[390px] flex items-center justify-center">
+                <div className="absolute w-[220px] h-[220px] sm:w-[320px] sm:h-[320px] rounded-full border border-dashed border-[#D8D8EA]" />
+                <div className="absolute w-[160px] h-[160px] sm:w-[230px] sm:h-[230px] rounded-full border border-[#E3E3F0]" />
+                <div className="relative z-10 w-16 h-16 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center shadow-xl" style={{ background: "linear-gradient(135deg,#4036A8,#675BD5)" }}>
+                  <Handshake size={32} color="white" strokeWidth={1.8} className="sm:hidden" />
+                  <Handshake size={42} color="white" strokeWidth={1.8} className="hidden sm:block" />
                 </div>
-                <BusinessNode className="absolute left-2 top-8" icon={<Store size={21} />} text="Wholesaler" />
-                <BusinessNode className="absolute right-2 top-8" icon={<UserRound size={21} />} text="Buyer" />
-                <BusinessNode className="absolute left-5 bottom-8" icon={<Package size={21} />} text="Products" />
-                <BusinessNode className="absolute right-5 bottom-8" icon={<CheckCircle2 size={21} />} text="Verified" />
+                <BusinessNode className="absolute left-1 top-6 sm:left-2 sm:top-8" icon={<Store size={18} />} text="Wholesaler" />
+                <BusinessNode className="absolute right-1 top-6 sm:right-2 sm:top-8" icon={<UserRound size={18} />} text="Buyer" />
+                <BusinessNode className="absolute left-3 bottom-6 sm:left-5 sm:bottom-8" icon={<Package size={18} />} text="Products" />
+                <BusinessNode className="absolute right-3 bottom-6 sm:right-5 sm:bottom-8" icon={<CheckCircle2 size={18} />} text="Verified" />
               </div>
             </div>
           </section>
 
-          <section className="max-w-[1320px] mx-auto px-5 lg:px-8 py-12">
+          <section className="max-w-[1320px] mx-auto px-5 lg:px-8 py-10 lg:py-12">
             <SectionTitle title="Explore Categories" subtitle="Find wholesale businesses by category" action="View all" onClick={() => go("categories")} />
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
               {categories.map((cat) => {
@@ -344,7 +388,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="bg-[#F8F8FA] py-14">
+          <section className="bg-[#F8F8FA] py-10 lg:py-14">
             <div className="max-w-[1320px] mx-auto px-5 lg:px-8">
               <SectionTitle title="Trending Wholesale Products" subtitle="Products listed by businesses on Wholzo" action="View all products" onClick={() => go("search")} />
               <FilterBar
@@ -367,7 +411,7 @@ export default function Home() {
                 )}
                 {filteredProducts.map((product) => (
                   <ProductCard
-                    key={product.name + product.businessId}
+                    key={product.id}
                     product={product}
                     onDetails={() => setSelectedProduct(product)}
                     onChat={() => openChat({ id: product.businessId, name: product.business })}
@@ -377,21 +421,21 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="py-16 relative overflow-hidden">
+          <section className="py-10 lg:py-16 relative overflow-hidden">
             <div className="relative max-w-[1100px] mx-auto px-5">
               <div className="text-center">
                 <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   <BriefcaseBusiness size={14} />
                   Business Network
                 </div>
-                <h2 className="text-3xl font-black mt-3">
+                <h2 className="text-2xl lg:text-3xl font-black mt-3">
                   Connect With Businesses,
                   <br />
                   <span style={{ color: PURPLE }}>Not Just Products.</span>
                 </h2>
                 <p className="text-xs text-gray-500 mt-3">Discover verified wholesale businesses and start meaningful conversations.</p>
               </div>
-              <div className="grid md:grid-cols-3 gap-4 mt-10">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mt-10">
                 {businesses.length === 0 && (
                   <p className="text-xs text-gray-400 col-span-full text-center">No businesses yet.</p>
                 )}
@@ -407,21 +451,26 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="py-16 bg-[#F7F6FF]">
+          <section className="py-12 lg:py-16 bg-[#F7F6FF]">
             <div className="max-w-[900px] mx-auto text-center px-5">
-              <h2 className="text-3xl font-black">Have a wholesale requirement?</h2>
+              <h2 className="text-2xl lg:text-3xl font-black">Have a wholesale requirement?</h2>
               <p className="text-sm text-gray-500 mt-3">Post what you need and let relevant businesses discover your requirement.</p>
-              <button onClick={() => go("requirements")} className="mt-6 px-6 py-3 rounded-md text-white text-xs font-bold" style={{ background: PURPLE }}>
-                Post Requirement
-                <ArrowRight size={14} className="inline ml-2" />
-              </button>
+              <div className="flex flex-wrap justify-center gap-3 mt-6">
+                <button onClick={() => go("requirements")} className="px-6 py-3 rounded-md text-white text-xs font-bold" style={{ background: PURPLE }}>
+                  Post Requirement
+                  <ArrowRight size={14} className="inline ml-2" />
+                </button>
+                <button onClick={() => go("requirement-list")} className="px-6 py-3 rounded-md text-xs font-bold bg-white border border-[#DADAE2]">
+                  Browse Requirements
+                </button>
+              </div>
             </div>
           </section>
         </>
       )}
 
       {page === "categories" && (
-        <main className="max-w-[1200px] mx-auto px-5 py-14">
+        <main className="max-w-[1200px] mx-auto px-5 py-10 lg:py-14">
           <PageHeading title="Wholesale Categories" subtitle="Explore verified businesses across major wholesale categories." />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-9">
             {categories.map((cat) => {
@@ -441,9 +490,9 @@ export default function Home() {
       )}
 
       {page === "discover" && (
-        <main className="max-w-[1200px] mx-auto px-5 py-14">
+        <main className="max-w-[1200px] mx-auto px-5 py-10 lg:py-14">
           <PageHeading title="Discover Wholesalers" subtitle="Find businesses, suppliers and wholesale connections." />
-          <div className="grid md:grid-cols-3 gap-5 mt-7">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 mt-7">
             {businesses.length === 0 && (
               <p className="text-xs text-gray-400 col-span-full">No businesses yet.</p>
             )}
@@ -460,7 +509,7 @@ export default function Home() {
       )}
 
       {page === "search" && (
-        <main className="max-w-[1200px] mx-auto px-5 py-14">
+        <main className="max-w-[1200px] mx-auto px-5 py-10 lg:py-14">
           <PageHeading title="Search Wholesale" subtitle="Showing search results" />
           <FilterBar
             categoryFilter={categoryFilter}
@@ -482,7 +531,7 @@ export default function Home() {
             )}
             {filteredProducts.map((product) => (
               <ProductCard
-                key={product.name + product.businessId}
+                key={product.id}
                 product={product}
                 onDetails={() => setSelectedProduct(product)}
                 onChat={() => openChat({ id: product.businessId, name: product.business })}
@@ -492,7 +541,11 @@ export default function Home() {
         </main>
       )}
 
-      {page === "requirements" && <RequirementPage />}
+      {page === "requirements" && <RequirementPostPage onViewAll={() => go("requirement-list")} />}
+
+      {page === "requirement-list" && (
+        <RequirementListPage onRespond={(target) => openChat(target)} />
+      )}
 
       {page === "messages" && (
         <MessagesPage currentUserId={userId} target={chatTarget} businesses={businesses} onSelectTarget={setChatTarget} />
@@ -519,7 +572,7 @@ export default function Home() {
 
 function Nav({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="relative text-[12px] font-semibold py-[24px]" style={{ color: active ? PURPLE : BLACK }}>
+    <button onClick={onClick} className="relative text-[12px] font-semibold py-[24px] whitespace-nowrap" style={{ color: active ? PURPLE : BLACK }}>
       {children}
       {active && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full" style={{ background: PURPLE }} />}
     </button>
@@ -528,12 +581,12 @@ function Nav({ children, active, onClick }: { children: React.ReactNode; active:
 
 function SectionTitle({ title, subtitle, action, onClick }: { title: string; subtitle: string; action: string; onClick: () => void }) {
   return (
-    <div className="flex items-end justify-between">
+    <div className="flex items-end justify-between gap-3">
       <div>
-        <h2 className="text-xl font-black tracking-tight">{title}</h2>
+        <h2 className="text-lg lg:text-xl font-black tracking-tight">{title}</h2>
         <p className="text-[11px] text-gray-500 mt-1">{subtitle}</p>
       </div>
-      <button onClick={onClick} className="text-[11px] font-bold" style={{ color: PURPLE }}>{action}</button>
+      <button onClick={onClick} className="text-[11px] font-bold whitespace-nowrap" style={{ color: PURPLE }}>{action}</button>
     </div>
   );
 }
@@ -541,7 +594,7 @@ function SectionTitle({ title, subtitle, action, onClick }: { title: string; sub
 function PageHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+      <h1 className="text-2xl lg:text-3xl font-black tracking-tight">{title}</h1>
       <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
     </div>
   );
@@ -549,11 +602,11 @@ function PageHeading({ title, subtitle }: { title: string; subtitle: string }) {
 
 function BusinessNode({ className, icon, text }: { className: string; icon: React.ReactNode; text: string }) {
   return (
-    <div className={`${className} w-[115px] bg-white border border-[#E6E6ED] rounded-xl shadow-sm p-3`}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#F1F0FF", color: PURPLE }}>
+    <div className={`${className} w-[95px] sm:w-[115px] bg-white border border-[#E6E6ED] rounded-xl shadow-sm p-2.5 sm:p-3`}>
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: "#F1F0FF", color: PURPLE }}>
         {icon}
       </div>
-      <p className="text-[10px] font-bold mt-2">{text}</p>
+      <p className="text-[9px] sm:text-[10px] font-bold mt-2">{text}</p>
     </div>
   );
 }
@@ -656,14 +709,17 @@ function FilterBar({
 function ProductCard({ product, onDetails, onChat }: { product: Product; onDetails: () => void; onChat: () => void }) {
   return (
     <div className="group bg-white border border-[#E6E6EB] rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-[2px] transition-all duration-200">
-      <div className="relative h-[175px] bg-[#F3F3F5] overflow-hidden">
+      <div className="relative h-[140px] sm:h-[175px] bg-[#F3F3F5] overflow-hidden">
         <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-300" />
         <div className="absolute top-2.5 left-2.5 px-2 py-1 rounded bg-white/95 text-[9px] font-bold">{product.category}</div>
+        {!product.inStock && (
+          <div className="absolute top-2.5 right-2.5 px-2 py-1 rounded bg-red-600 text-white text-[9px] font-bold">Out of stock</div>
+        )}
       </div>
-      <div className="p-4">
-        <h3 className="text-[12px] font-bold truncate">{product.name}</h3>
-        <p className="text-[14px] font-black mt-1">{product.price}</p>
-        <div className="flex items-center justify-between mt-3 text-[10px] text-gray-500">
+      <div className="p-3 sm:p-4">
+        <h3 className="text-[11px] sm:text-[12px] font-bold truncate">{product.name}</h3>
+        <p className="text-[13px] sm:text-[14px] font-black mt-1">{product.price}</p>
+        <div className="flex items-center justify-between mt-3 text-[9px] sm:text-[10px] text-gray-500">
           <span>MOQ: <b className="text-gray-700">{product.moq}</b></span>
           <span className="flex items-center gap-1"><MapPin size={10} />{product.state}</span>
         </div>
@@ -687,15 +743,13 @@ function BusinessCard({ business, onChat, onView }: { business: Business; onChat
     <div className="bg-white border border-[#E5E5EA] rounded-xl p-5 hover:shadow-lg transition">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "#F1F0FF" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F1F0FF" }}>
             <Building2 size={20} color={PURPLE} />
           </div>
-                      <div>
+          <div>
             <h3 className="text-[13px] font-bold flex items-center gap-1">
               {business.name}
-              {business.verified && (
-                <CheckCircle2 size={13} color="#059669" />
-              )}
+              {business.verified && <CheckCircle2 size={13} color="#059669" />}
             </h3>
             {business.verified && (
               <p className="text-[9px] font-semibold text-green-600 mt-0.5">Verified Business</p>
@@ -714,17 +768,21 @@ function BusinessCard({ business, onChat, onView }: { business: Business; onChat
     </div>
   );
 }
+
 type Requirement = {
   id: string;
+  buyer_id: string;
   title: string;
   quantity: string;
   target_price: string;
   state: string;
   details: string;
   status: string;
+  created_at: string;
+  profiles?: { business_name: string };
 };
 
-function RequirementPage() {
+function RequirementPostPage({ onViewAll }: { onViewAll: () => void }) {
   const [posted, setPosted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -734,20 +792,6 @@ function RequirementPage() {
   const [targetPrice, setTargetPrice] = useState("");
   const [state, setState] = useState("");
   const [details, setDetails] = useState("");
-
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
-
-  useEffect(() => {
-    async function loadRequirements() {
-      const { data } = await supabase
-        .from("requirements")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (data) setRequirements(data);
-    }
-    loadRequirements();
-  }, [posted]);
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault();
@@ -790,24 +834,25 @@ function RequirementPage() {
           </div>
           <h1 className="text-2xl font-black mt-5">Requirement Posted</h1>
           <p className="text-sm text-gray-500 mt-2">Your requirement is now visible to relevant wholesalers.</p>
-          <button
-            onClick={() => setPosted(false)}
-            className="mt-6 text-xs font-bold"
-            style={{ color: PURPLE }}
-          >
-            Post another requirement
-          </button>
+          <div className="flex flex-col items-center gap-2 mt-6">
+            <button onClick={() => setPosted(false)} className="text-xs font-bold" style={{ color: PURPLE }}>
+              Post another requirement
+            </button>
+            <button onClick={onViewAll} className="text-xs font-bold" style={{ color: PURPLE }}>
+              Browse all requirements
+            </button>
+          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="max-w-[760px] mx-auto px-5 py-14">
+    <main className="max-w-[760px] mx-auto px-5 py-10 lg:py-14">
       <PageHeading title="Post a Wholesale Requirement" subtitle="Tell suppliers exactly what you need." />
-      <div className="mt-8 bg-white border border-[#E5E5EA] rounded-xl p-6">
+      <div className="mt-8 bg-white border border-[#E5E5EA] rounded-xl p-5 sm:p-6">
         <form onSubmit={handlePost}>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <label className="block">
               <span className="text-[10px] font-bold">What are you looking for?</span>
               <input
@@ -877,24 +922,69 @@ function RequirementPage() {
         </form>
       </div>
 
-      {requirements.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-lg font-black">Recent Requirements</h2>
-          <div className="grid sm:grid-cols-2 gap-4 mt-4">
-            {requirements.map((r) => (
-              <div key={r.id} className="bg-white border border-[#E5E5EA] rounded-xl p-5">
-                <h3 className="text-sm font-bold">{r.title}</h3>
-                <div className="mt-2 text-[11px] text-gray-500 space-y-1">
-                  {r.quantity && <p>Quantity: {r.quantity}</p>}
-                  {r.target_price && <p>Target price: {r.target_price}</p>}
-                  {r.state && <p>Location: {r.state}</p>}
-                  <p>Status: <span className="text-green-600 font-semibold">{r.status}</span></p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="text-center mt-6">
+        <button onClick={onViewAll} className="text-xs font-bold" style={{ color: PURPLE }}>
+          Browse all requirements →
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function RequirementListPage({ onRespond }: { onRespond: (target: ChatTarget) => void }) {
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from("requirements")
+        .select("*, profiles(business_name)")
+        .order("created_at", { ascending: false });
+      if (data) setRequirements(data as any);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  return (
+    <main className="max-w-[1000px] mx-auto px-5 py-10 lg:py-14">
+      <PageHeading title="Wholesale Requirements" subtitle="Browse what businesses are currently looking to buy." />
+
+      {loading && <p className="text-xs text-gray-400 mt-8">Loading...</p>}
+
+      {!loading && requirements.length === 0 && (
+        <p className="text-xs text-gray-400 mt-8">No requirements posted yet.</p>
       )}
+
+      <div className="grid sm:grid-cols-2 gap-4 mt-8">
+        {requirements.map((r) => (
+          <div key={r.id} className="bg-white border border-[#E5E5EA] rounded-xl p-5">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-sm font-bold">{r.title}</h3>
+              <span className="text-[9px] px-2 py-1 rounded bg-green-50 text-green-600 font-semibold whitespace-nowrap">{r.status}</span>
+            </div>
+            <div className="mt-2 text-[11px] text-gray-500 space-y-1">
+              {r.quantity && <p>Quantity: {r.quantity}</p>}
+              {r.target_price && <p>Target price: {r.target_price}</p>}
+              {r.state && <p className="flex items-center gap-1"><MapPin size={11} />{r.state}</p>}
+              {r.details && <p className="mt-1 text-gray-600">{r.details}</p>}
+            </div>
+            <div className="mt-3 pt-3 border-t border-[#EEEEF1] flex items-center justify-between gap-2">
+              <p className="text-[10px] text-gray-400">
+                Posted by <span className="font-semibold text-gray-600">{r.profiles?.business_name || "A buyer"}</span>
+              </p>
+              <button
+                onClick={() => onRespond({ id: r.buyer_id, name: r.profiles?.business_name || "Buyer" })}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-md text-white whitespace-nowrap"
+                style={{ background: PURPLE }}
+              >
+                Respond
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </main>
   );
 }
@@ -973,11 +1063,11 @@ function MessagesPage({
   }
 
   return (
-    <main className="max-w-[1000px] mx-auto px-5 py-12">
+    <main className="max-w-[1000px] mx-auto px-5 py-10 lg:py-12">
       <PageHeading title="Messages" subtitle="Communicate directly with businesses." />
 
       <div className="mt-7 grid md:grid-cols-[240px_1fr] gap-4">
-        <div className="border border-[#E5E5EA] rounded-xl overflow-hidden h-fit">
+        <div className="border border-[#E5E5EA] rounded-xl overflow-hidden h-fit max-h-[300px] md:max-h-none overflow-y-auto">
           <div className="p-3 border-b bg-[#FAFAFB] text-[10px] font-bold text-gray-500 uppercase">Businesses</div>
           {businesses.filter((b) => b.id !== currentUserId).map((b) => (
             <button
@@ -993,13 +1083,13 @@ function MessagesPage({
 
         <div className="border border-[#E5E5EA] rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#F1F0FF] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-[#F1F0FF] flex items-center justify-center flex-shrink-0">
               <Building2 size={19} color={PURPLE} />
             </div>
-            <p className="text-xs font-bold">{target?.name || "Select a business to message"}</p>
+            <p className="text-xs font-bold truncate">{target?.name || "Select a business to message"}</p>
           </div>
 
-          <div className="h-[400px] bg-[#FAFAFB] p-5 overflow-y-auto">
+          <div className="h-[300px] sm:h-[400px] bg-[#FAFAFB] p-5 overflow-y-auto">
             {!target && <p className="text-xs text-gray-400">Pick a business on the left to start chatting.</p>}
             {target && loading && <p className="text-xs text-gray-400">Loading...</p>}
             {target && !loading && msgs.length === 0 && (
@@ -1023,12 +1113,12 @@ function MessagesPage({
               onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
               placeholder={target ? "Write a message..." : "Select a business first"}
               disabled={!target}
-              className="flex-1 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none disabled:opacity-50"
+              className="flex-1 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none disabled:opacity-50 min-w-0"
             />
             <button
               onClick={handleSend}
               disabled={!target}
-              className="w-10 rounded-md flex items-center justify-center text-white disabled:opacity-50"
+              className="w-10 rounded-md flex items-center justify-center text-white disabled:opacity-50 flex-shrink-0"
               style={{ background: PURPLE }}
             >
               <Send size={15} />
@@ -1041,18 +1131,26 @@ function MessagesPage({
 }
 
 function ProductModal({ product, close, chat }: { product: Product; close: () => void; chat: () => void }) {
+  useEffect(() => {
+    supabase.from("products").update({ views: product.views + 1 }).eq("id", product.id);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-5">
-      <div className="bg-white rounded-2xl max-w-[720px] w-full overflow-hidden shadow-2xl relative">
+    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl max-w-[720px] w-full overflow-hidden shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <button onClick={close} className="absolute right-4 top-4 z-10 w-8 h-8 bg-white rounded-full shadow flex items-center justify-center">
           <X size={15} />
         </button>
         <div className="grid md:grid-cols-2">
-          <img src={product.image} alt={product.name} className="w-full h-[300px] md:h-full object-cover" />
-          <div className="p-7">
+          <img src={product.image} alt={product.name} className="w-full h-[220px] sm:h-[300px] md:h-full object-cover" />
+          <div className="p-5 sm:p-7">
             <span className="text-[10px] font-bold text-purple-600">{product.category}</span>
-            <h2 className="text-xl font-black mt-2">{product.name}</h2>
-            <p className="text-xl font-black mt-4">{product.price}</p>
+            <h2 className="text-lg sm:text-xl font-black mt-2">{product.name}</h2>
+            <p className="text-lg sm:text-xl font-black mt-4">{product.price}</p>
+            <p className="text-[11px] font-semibold mt-1" style={{ color: product.inStock ? "#059669" : "#DC2626" }}>
+              {product.inStock ? "In stock" : "Out of stock"}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-1">{product.views} views</p>
             <div className="mt-6 space-y-3 text-xs text-gray-500">
               <p><b className="text-gray-800">MOQ:</b> {product.moq} units</p>
               <p className="flex items-center gap-2"><MapPin size={13} />{product.state}</p>
@@ -1062,7 +1160,7 @@ function ProductModal({ product, close, chat }: { product: Product; close: () =>
               <MessageCircle size={14} className="inline mr-2" />
               Chat With Seller
             </button>
-           <ReportButton targetType="product" targetId={product.name} targetName={product.name} />
+            <ReportButton targetType="product" targetId={product.name} targetName={product.name} />
           </div>
         </div>
       </div>
@@ -1072,15 +1170,18 @@ function ProductModal({ product, close, chat }: { product: Product; close: () =>
 
 function BusinessModal({ business, close, chat }: { business: Business; close: () => void; chat: () => void }) {
   return (
-    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-5">
-      <div className="bg-white rounded-2xl max-w-[600px] w-full p-7 relative">
+    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl max-w-[600px] w-full p-5 sm:p-7 relative max-h-[90vh] overflow-y-auto">
         <button onClick={close} className="absolute right-4 top-4"><X size={17} /></button>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-[#F1F0FF] flex items-center justify-center">
+          <div className="w-14 h-14 rounded-xl bg-[#F1F0FF] flex items-center justify-center flex-shrink-0">
             <Building2 size={25} color={PURPLE} />
           </div>
           <div>
-            <h2 className="text-xl font-black">{business.name}</h2>
+            <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
+              {business.name}
+              {business.verified && <CheckCircle2 size={16} color="#059669" />}
+            </h2>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 mt-7">
@@ -1091,29 +1192,12 @@ function BusinessModal({ business, close, chat }: { business: Business; close: (
           <MessageCircle size={14} className="inline mr-2" />
           Connect With Business
         </button>
-            <ReportButton targetType="business" targetId={business.id} targetName={business.name} />
+        <ReportButton targetType="business" targetId={business.id} targetName={business.name} />
       </div>
     </div>
   );
 }
 
-function InfoBox({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="bg-[#F8F8FA] rounded-lg p-4">
-      <p className="text-[9px] text-gray-400">{title}</p>
-      <p className="text-xs font-bold mt-1">{value}</p>
-    </div>
-  );
-}
-
-function Input({ label, placeholder, type = "text" }: { label: string; placeholder: string; type?: string }) {
-  return (
-    <label className="block mt-4">
-      <span className="text-[10px] font-bold">{label}</span>
-      <input type={type} placeholder={placeholder} className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none focus:border-[#8D87DE]" />
-    </label>
-  );
-}
 function ReportButton({
   targetType,
   targetId,
@@ -1192,6 +1276,15 @@ function ReportButton({
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+function InfoBox({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="bg-[#F8F8FA] rounded-lg p-4">
+      <p className="text-[9px] text-gray-400">{title}</p>
+      <p className="text-xs font-bold mt-1">{value}</p>
     </div>
   );
 }
