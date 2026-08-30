@@ -928,6 +928,7 @@ function ProductModal({ product, close, chat }: { product: Product; close: () =>
               <MessageCircle size={14} className="inline mr-2" />
               Chat With Seller
             </button>
+           <ReportButton targetType="product" targetId={product.name} targetName={product.name} />
           </div>
         </div>
       </div>
@@ -956,6 +957,7 @@ function BusinessModal({ business, close, chat }: { business: Business; close: (
           <MessageCircle size={14} className="inline mr-2" />
           Connect With Business
         </button>
+            <ReportButton targetType="business" targetId={business.id} targetName={business.name} />
       </div>
     </div>
   );
@@ -976,5 +978,86 @@ function Input({ label, placeholder, type = "text" }: { label: string; placehold
       <span className="text-[10px] font-bold">{label}</span>
       <input type={type} placeholder={placeholder} className="w-full mt-2 border border-[#DCDCE4] rounded-md px-3 py-2.5 text-xs outline-none focus:border-[#8D87DE]" />
     </label>
+  );
+}
+function ReportButton({
+  targetType,
+  targetId,
+  targetName,
+}: {
+  targetType: string;
+  targetId: string;
+  targetName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function submitReport() {
+    if (!reason.trim()) return;
+    setSending(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await supabase.from("reports").insert({
+      reporter_id: user?.id ?? null,
+      target_type: targetType,
+      target_id: targetId,
+      target_name: targetName,
+      reason,
+    });
+
+    setSending(false);
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <p className="mt-3 text-[11px] text-center text-gray-500">
+        Thanks — this has been reported for review.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full mt-3 py-2 rounded-md border border-[#EBB] text-[11px] font-semibold text-red-600 hover:bg-red-50"
+      >
+        Report this {targetType}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-[#EBB] rounded-md p-3">
+      <p className="text-[11px] font-semibold text-red-600 mb-2">
+        Why are you reporting this {targetType}?
+      </p>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={2}
+        placeholder="Describe the issue..."
+        className="w-full border border-gray-300 rounded-md p-2 text-xs outline-none resize-none"
+      />
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={submitReport}
+          disabled={sending || !reason.trim()}
+          className="flex-1 py-2 rounded-md bg-red-600 text-white text-[11px] font-semibold disabled:opacity-50"
+        >
+          {sending ? "Submitting..." : "Submit report"}
+        </button>
+        <button
+          onClick={() => setOpen(false)}
+          className="px-3 py-2 rounded-md border border-gray-300 text-[11px] font-semibold"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
