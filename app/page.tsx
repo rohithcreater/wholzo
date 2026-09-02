@@ -728,7 +728,7 @@ function ProductCard({ product, onDetails, onChat }: { product: Product; onDetai
           <p className="text-[10px] font-semibold mt-0.5">{product.business}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3">
-          <button onClick={onDetails} className="py-2 rounded-md border border-[#D9D9E1] text-[10px] font-bold hover:bg-gray-50">View Details</button>
+          <a href={`/products/${product.id}`} className="py-2 rounded-md border border-[#D9D9E1] text-[10px] font-bold hover:bg-gray-50 flex items-center justify-center">View Details</a>
           <button onClick={onChat} className="py-2 rounded-md text-[10px] font-bold flex items-center justify-center gap-1 text-white" style={{ background: PURPLE }}>
             <MessageCircle size={11} />Chat
           </button>
