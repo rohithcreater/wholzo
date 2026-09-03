@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Mail,
   Link2,
+  Pencil,
+  Heart,
 } from "lucide-react";
 
 const BLUE = "#1D2939";
@@ -28,6 +30,9 @@ export default function ProductPage() {
   const [reason, setReason] = useState("");
   const [reportSent, setReportSent] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -41,6 +46,21 @@ export default function ProductPage() {
         setProduct(data);
         setActiveImage(0);
         supabase.from("products").update({ views: (data.views || 0) + 1 }).eq("id", data.id);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.id === data.business_id) {
+          setIsOwner(true);
+        }
+        if (user) {
+          setCurrentUserId(user.id);
+          const { data: fav } = await supabase
+            .from("favorites")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("product_id", data.id)
+            .maybeSingle();
+          setIsFavorited(!!fav);
+        }
       }
       setLoading(false);
     }
@@ -68,6 +88,28 @@ export default function ProductPage() {
       reason,
     });
     setReportSent(true);
+  }
+
+  async function toggleFavorite() {
+    if (!product) return;
+    if (!currentUserId) {
+      router.push("/login");
+      return;
+    }
+    if (isFavorited) {
+      await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("product_id", product.id);
+      setIsFavorited(false);
+    } else {
+      await supabase.from("favorites").insert({
+        user_id: currentUserId,
+        product_id: product.id,
+      });
+      setIsFavorited(true);
+    }
   }
 
   function copyLink() {
@@ -111,13 +153,33 @@ export default function ProductPage() {
             <span className="text-gray-800">{product.name}</span>
           </div>
           {!reportSent && !reportOpen && (
-            <button
-              onClick={() => setReportOpen(true)}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500"
-            >
-              <Flag size={12} />
-              Report
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={toggleFavorite}
+                className="flex items-center gap-1 text-xs font-medium"
+                style={{ color: isFavorited ? "#DC2626" : "#9CA3AF" }}
+              >
+                <Heart size={13} fill={isFavorited ? "#DC2626" : "none"} />
+                {isFavorited ? "Saved" : "Save"}
+              </button>
+              {isOwner && (
+                <button
+                  onClick={() => router.push(`/products/${params.id}/edit`)}
+                  className="flex items-center gap-1 text-xs font-medium"
+                  style={{ color: BLUE }}
+                >
+                  <Pencil size={12} />
+                  Edit Product
+                </button>
+              )}
+              <button
+                onClick={() => setReportOpen(true)}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500"
+              >
+                <Flag size={12} />
+                Report
+              </button>
+            </div>
           )}
         </div>
 
